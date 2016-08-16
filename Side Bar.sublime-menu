@@ -1,0 +1,82 @@
+[
+  {
+    "caption": "Rekit: Add Feature",
+    "id": "rekit_add_feature",
+    "command": "add_feature",
+    "args": {
+      "paths": []
+    }
+  },
+  {
+    "caption": "Rekit: Add Page",
+    "id": "rekit_add_page",
+    "command": "add_page",
+    "args": {
+      "paths": []
+    }
+  },
+  {
+    "caption": "Rekit: Add Component",
+    "id": "rekit_add_component",
+    "command": "add_component",
+    "args": {
+      "paths": []
+    }
+  },
+  {
+    "caption": "Rekit: Add Action",
+    "id": "rekit_add_action",
+    "command": "add_action",
+    "args": {
+      "paths": []
+    }
+  },
+  {
+    "caption": "Rekit: Add Async Action",
+    "id": "rekit_add_async_action",
+    "command": "add_async_action",
+    "args": {
+      "paths": []
+    }
+  },
+  {
+    "caption": "Rekit: Remove Feature",
+    "id": "rekit_remove_feature",
+    "command": "remove_feature",
+    "args": {
+      "paths": []
+    }
+  },
+  {
+    "caption": "Rekit: Remove Component",
+    "id": "rekit_remove_component",
+    "command": "remove_component",
+    "args": {
+      "paths": []
+    }
+  },
+  {
+    "caption": "Rekit: Remove Page",
+    "id": "rekit_remove_page",
+    "command": "remove_page",
+    "args": {
+      "paths": []
+    }
+  },
+  {
+    "caption": "Rekit: Remove Action",
+    "id": "rekit_remove_action",
+    "command": "remove_action",
+    "args": {
+      "paths": []
+    }
+  },
+  {
+    "caption": "Rekit: Remove Async Action",
+    "id": "rekit_remove_async_action",
+    "command": "remove_async_action",
+    "args": {
+      "paths": []
+    }
+  }
+]
