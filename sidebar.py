@@ -1,6 +1,5 @@
 #!/usr/bin/python
-import os, sublime, sublime_plugin, logging, functools, re
-from subprocess import call
+import os, sublime, sublime_plugin, logging, functools, re, subprocess
 
 NODE_PATH = '/Users/i305656/.nvm/versions/node/v4.2.1/bin/node'
 def Window():
@@ -100,10 +99,11 @@ def is_other():
   return True
 
 def run_node(js, args = []):
-  call([NODE_PATH, js] + args)
+  p = subprocess.Popen([NODE_PATH, js] + args, stdout=subprocess.PIPE, cwd='/Users/i305656/workspace/app1', stderr=subprocess.STDOUT)
+  for line in p.stdout.readlines():
+    print(line)
 
 def run_script(path, name, args = []):
-  logging.warning('running script: %s' % name)
   run_node(os.path.join(get_rekit_root(path), 'tools', name + '.js'), args)
 
 class AddFeatureCommand(sublime_plugin.ApplicationCommand):
