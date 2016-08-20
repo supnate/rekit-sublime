@@ -1,5 +1,13 @@
 #!/usr/bin/python
-import os, sublime, sublime_plugin, logging, functools, re, subprocess, threading
+
+import os
+import sublime
+import sublime_plugin
+import logging
+import functools
+import re
+import subprocess
+import threading
 
 def Window():
   return sublime.active_window()
@@ -21,7 +29,10 @@ class CommandThread(threading.Thread):
 
   def run(self):
     try:
-      p = subprocess.Popen(self.command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+      si = subprocess.STARTUPINFO()
+      si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+      #si.wShowWindow = subprocess.SW_HIDE # default
+      p = subprocess.Popen(self.command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, startupinfo=si)
       for line in p.stdout.readlines():
         print(line)
 
@@ -39,8 +50,6 @@ def run_command(command, callback=None, show_status=True, filter_empty_args=True
     command = [arg for arg in command if arg]
 
   s = sublime.load_settings("Rekit.sublime-settings")
-  print('settings')
-  print(s.get('node_command'))
 
   if command[0] == 'node' and s.get('node_command'):
     command[0] = s.get('node_command')
@@ -55,14 +64,14 @@ def run_command(command, callback=None, show_status=True, filter_empty_args=True
   thread.start()
 
 def run_script(path, name, args = []):
-  js_file = os.path.join(get_rekit_root(path), 'tools', name + '.js')
+  js_file = os.path.join(get_rekit_root(path), 'tools', name + '.js').replace('\\', '/').replace('\\', '/')
   run_command(['node', js_file] + args)
 
 def is_rekit_root(path):
   if path is None:
     return False
-  return os.path.exists(os.path.join(path, 'src/features')) \
-    and os.path.exists(os.path.join(path, 'tools/feature_template'))
+  return os.path.exists(os.path.join(path, 'src/features').replace('\\', '/')) \
+    and os.path.exists(os.path.join(path, 'tools/feature_template').replace('\\', '/'))
 
 def get_rekit_root(path):
   lastPath = None
@@ -81,13 +90,17 @@ def get_feature_name(path):
   return path.split('src/features/')[1].split('/')[0]
 
 def is_rekit_project(path):
+  print("is rekit project?")
+  print(get_rekit_root(path))
   return get_rekit_root(path) is not None
 
 def is_feature(path):
-  return is_rekit_project(path) and os.path.dirname(path) == os.path.join(get_rekit_root(path), 'src/features')
+  print("is feature?")
+  print(os.path.join(get_rekit_root(path), 'src/features').replace('\\', '/'))
+  return is_rekit_project(path) and os.path.dirname(path) == os.path.join(get_rekit_root(path), 'src/features').replace('\\', '/')
 
 def is_features_folder(path):
-  return is_rekit_project(path) and path == os.path.join(get_rekit_root(path), 'src/features')
+  return is_rekit_project(path) and path == os.path.join(get_rekit_root(path), 'src/features').replace('\\', '/')
 
 def is_page(path):
   return False
@@ -149,105 +162,108 @@ def is_actions(path):
 def is_other():
   return True
 
-class AddFeatureCommand(sublime_plugin.ApplicationCommand):
+def get_path(paths):
+  return paths[0].replace('\\', '/')
+
+class AddFeatureCommand(sublime_plugin.WindowCommand):
   def run(self, paths = []):
     Window().show_input_panel("Feature name:", '', functools.partial(self.on_done, paths, False), None, None)
 
   def on_done(self, paths, relative_to_project, name):
-    run_script(paths[0], 'add_feature', [name])
-    run_script(paths[0], 'add_action', ['%s/%s-test-action' % (name, name)])
-    run_script(paths[0], 'add_page', ['%s/default-page' % name])
+    run_script(get_path(paths), 'add_feature', [name])
+    run_script(get_path(paths), 'add_action', ['%s/%s-test-action' % (name, name)])
+    run_script(get_path(paths), 'add_page', ['%s/default-page' % name])
 
   def is_visible(self, paths = []):
-    return is_features_folder(paths[0])
+    return is_features_folder(get_path(paths))
 
-class RemoveFeatureCommand(sublime_plugin.ApplicationCommand):
+class RemoveFeatureCommand(sublime_plugin.WindowCommand):
   def run(self, paths = []):
-    feature_name = get_feature_name(paths[0])
+    feature_name = get_feature_name(get_path(paths))
     if sublime.ok_cancel_dialog('Remove Feature: %s?' % feature_name, 'Remove'):
-      run_script(paths[0], 'rm_feature', [feature_name])
+      run_script(get_path(paths), 'rm_feature', [feature_name])
 
   def is_visible(self, paths = []):
-    return is_feature(paths[0])
+    return is_feature(get_path(paths))
 
-class AddComponentCommand(sublime_plugin.ApplicationCommand):
+class AddComponentCommand(sublime_plugin.WindowCommand):
   def run(self, paths = []):
-    Window().show_input_panel("Feature name/component name:", get_feature_name(paths[0]) + '/', functools.partial(self.on_done, paths, False), None, None)
+    Window().show_input_panel("Feature name/component name:", get_feature_name(get_path(paths)) + '/', functools.partial(self.on_done, paths, False), None, None)
 
   def on_done(self, paths, relative_to_project, name):
-    run_script(paths[0], 'add_component', name.split(' '))
+    run_script(get_path(paths), 'add_component', name.split(' '))
 
   def is_visible(self, paths = []):
-    return is_feature(paths[0])
+    return is_feature(get_path(paths))
 
-class RemoveComponentCommand(sublime_plugin.ApplicationCommand):
+class RemoveComponentCommand(sublime_plugin.WindowCommand):
   def run(self, paths = []):
-    feature_name = get_feature_name(paths[0])
-    component_name = get_filename_without_ext(paths[0])
+    feature_name = get_feature_name(get_path(paths))
+    component_name = get_filename_without_ext(get_path(paths))
     if sublime.ok_cancel_dialog('Remove Component: %s/%s?' % (feature_name, component_name), 'Remove'):
       Window().run_command('close')
-      run_script(paths[0], 'rm_component', ['%s/%s' % (feature_name, component_name)])
+      run_script(get_path(paths), 'rm_component', ['%s/%s' % (feature_name, component_name)])
   def is_visible(self, paths = []):
-    return is_component(paths[0])
+    return is_component(get_path(paths))
 
-class AddPageCommand(sublime_plugin.ApplicationCommand):
+class AddPageCommand(sublime_plugin.WindowCommand):
   def run(self, paths = []):
-    Window().show_input_panel("Feature name/page name:", get_feature_name(paths[0]) + '/', functools.partial(self.on_done, paths, False), None, None)
+    Window().show_input_panel("Feature name/page name:", get_feature_name(get_path(paths)) + '/', functools.partial(self.on_done, paths, False), None, None)
 
   def on_done(self, paths, relative_to_project, name):
-    run_script(paths[0], 'add_page', name.split(' '))
+    run_script(get_path(paths), 'add_page', name.split(' '))
 
   def is_visible(self, paths = []):
-    return is_feature(paths[0])
+    return is_feature(get_path(paths))
 
-class RemovePageCommand(sublime_plugin.ApplicationCommand):
+class RemovePageCommand(sublime_plugin.WindowCommand):
   def run(self, paths = []):
-    feature_name = get_feature_name(paths[0])
-    page_name = get_filename_without_ext(paths[0])
+    feature_name = get_feature_name(get_path(paths))
+    page_name = get_filename_without_ext(get_path(paths))
     if sublime.ok_cancel_dialog('Remove Page: %s/%s?' % (feature_name, page_name), 'Remove'):
       Window().run_command('close')
-      run_script(paths[0], 'rm_page', ['%s/%s' % (feature_name, page_name)])
+      run_script(get_path(paths), 'rm_page', ['%s/%s' % (feature_name, page_name)])
   def is_visible(self, paths = []):
-    return is_page(paths[0])
+    return is_page(get_path(paths))
 
-class AddActionCommand(sublime_plugin.ApplicationCommand):
+class AddActionCommand(sublime_plugin.WindowCommand):
   def run(self, paths = []):
-    Window().show_input_panel("Feature name/action name:", get_feature_name(paths[0]) + '/', functools.partial(self.on_done, paths, False), None, None)
+    Window().show_input_panel("Feature name/action name:", get_feature_name(get_path(paths)) + '/', functools.partial(self.on_done, paths, False), None, None)
 
   def on_done(self, paths, relative_to_project, name):
-    run_script(paths[0], 'add_action', name.split(' '))
+    run_script(get_path(paths), 'add_action', name.split(' '))
 
   def is_visible(self, paths = []):
-    return is_actions(paths[0])
+    return is_actions(get_path(paths))
 
-class RemoveActionCommand(sublime_plugin.ApplicationCommand):
+class RemoveActionCommand(sublime_plugin.WindowCommand):
   def run(self, paths = []):
-    Window().show_input_panel("Remove Action: Feature name/action name:", get_feature_name(paths[0]) + '/', functools.partial(self.on_done, paths, False), None, None)
+    Window().show_input_panel("Remove Action: Feature name/action name:", get_feature_name(get_path(paths)) + '/', functools.partial(self.on_done, paths, False), None, None)
 
   def on_done(self, paths, relative_to_project, name):
     if sublime.ok_cancel_dialog('Remove Action: %s?' % name, 'Remove'):
-      run_script(paths[0], 'rm_action', name.split(' '))
+      run_script(get_path(paths), 'rm_action', name.split(' '))
 
   def is_visible(self, paths = []):
-    return is_actions(paths[0])
+    return is_actions(get_path(paths))
 
-class AddAsyncActionCommand(sublime_plugin.ApplicationCommand):
+class AddAsyncActionCommand(sublime_plugin.WindowCommand):
   def run(self, paths = []):
-    Window().show_input_panel("Feature name/async action name:", get_feature_name(paths[0]) + '/', functools.partial(self.on_done, paths, False), None, None)
+    Window().show_input_panel("Feature name/async action name:", get_feature_name(get_path(paths)) + '/', functools.partial(self.on_done, paths, False), None, None)
 
   def on_done(self, paths, relative_to_project, name):
-    run_script(paths[0], 'add_async_action', name.split(' '))
+    run_script(get_path(paths), 'add_async_action', name.split(' '))
 
   def is_visible(self, paths = []):
-    return is_actions(paths[0])
+    return is_actions(get_path(paths))
 
-class RemoveAsyncActionCommand(sublime_plugin.ApplicationCommand):
+class RemoveAsyncActionCommand(sublime_plugin.WindowCommand):
   def run(self, paths = []):
-    Window().show_input_panel("Remove Async Action: Feature name/async action name:", get_feature_name(paths[0]) + '/', functools.partial(self.on_done, paths, False), None, None)
+    Window().show_input_panel("Remove Async Action: Feature name/async action name:", get_feature_name(get_path(paths)) + '/', functools.partial(self.on_done, paths, False), None, None)
 
   def on_done(self, paths, relative_to_project, name):
     if sublime.ok_cancel_dialog('Remove Async Action: %s?' % name, 'Remove'):
-      run_script(paths[0], 'rm_async_action', name.split(' '))
+      run_script(get_path(paths), 'rm_async_action', name.split(' '))
 
   def is_visible(self, paths = []):
-    return is_actions(paths[0])
+    return is_actions(get_path(paths))
