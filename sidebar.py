@@ -1,5 +1,4 @@
 #!/usr/bin/python
-
 import os
 import sublime
 import sublime_plugin
@@ -28,9 +27,12 @@ class CommandThread(threading.Thread):
     self.env.update(env)
 
   def run(self):
-    try:
+    si = None
+    if hasattr(subprocess, "STARTUPINFO"):
       si = subprocess.STARTUPINFO()
       si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+
+    try:
       #si.wShowWindow = subprocess.SW_HIDE # default
       p = subprocess.Popen(self.command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, startupinfo=si)
       for line in p.stdout.readlines():
@@ -71,7 +73,7 @@ def is_rekit_root(path):
   if path is None:
     return False
   return os.path.exists(os.path.join(path, 'src/features').replace('\\', '/')) \
-    and os.path.exists(os.path.join(path, 'tools/feature_template').replace('\\', '/'))
+    and os.path.exists(os.path.join(path, 'tools/templates/Page.js').replace('\\', '/'))
 
 def get_rekit_root(path):
   lastPath = None
@@ -90,13 +92,9 @@ def get_feature_name(path):
   return path.split('src/features/')[1].split('/')[0]
 
 def is_rekit_project(path):
-  print("is rekit project?")
-  print(get_rekit_root(path))
   return get_rekit_root(path) is not None
 
 def is_feature(path):
-  print("is feature?")
-  print(os.path.join(get_rekit_root(path), 'src/features').replace('\\', '/'))
   return is_rekit_project(path) and os.path.dirname(path) == os.path.join(get_rekit_root(path), 'src/features').replace('\\', '/')
 
 def is_features_folder(path):
@@ -171,8 +169,8 @@ class AddFeatureCommand(sublime_plugin.WindowCommand):
 
   def on_done(self, paths, relative_to_project, name):
     run_script(get_path(paths), 'add_feature', [name])
-    run_script(get_path(paths), 'add_action', ['%s/%s-test-action' % (name, name)])
-    run_script(get_path(paths), 'add_page', ['%s/default-page' % name])
+    # run_script(get_path(paths), 'add_action', ['%s/%s-test-action' % (name, name)])
+    # run_script(get_path(paths), 'add_page', ['%s/default-page' % name])
 
   def is_visible(self, paths = []):
     return is_features_folder(get_path(paths))
