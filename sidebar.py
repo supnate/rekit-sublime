@@ -100,6 +100,9 @@ def is_feature(path):
 def is_features_folder(path):
   return is_rekit_project(path) and path == os.path.join(get_rekit_root(path), 'src/features').replace('\\', '/')
 
+def is_feature_element(path):
+  return is_rekit_project(path) and re.search(r'src/features/\w+', os.path.dirname(path)) is not None;
+
 def is_page(path):
   return False
 
@@ -153,6 +156,11 @@ def is_page(path):
 
 def is_actions(path):
   return os.path.basename(path) == 'actions.js' \
+    and is_rekit_project(path) \
+    and is_feature(os.path.dirname(path))
+
+def is_reducer(path):
+  return os.path.basename(path) == 'reducer.js' \
     and is_rekit_project(path) \
     and is_feature(os.path.dirname(path))
 
@@ -265,3 +273,30 @@ class RemoveAsyncActionCommand(sublime_plugin.WindowCommand):
 
   def is_visible(self, paths = []):
     return is_actions(get_path(paths))
+
+class UnitTestCommand(sublime_plugin.WindowCommand):
+  def run(self, paths = []):
+    rekitRoot = get_rekit_root(paths[0])
+    targetName = get_filename_without_ext(paths[0])
+    featureName = None
+    if is_feature_element(paths[0]):
+      featureName = get_feature_name(paths[0])
+      testPath = os.path.join(rekitRoot, 'test/app/features/%s/%s.test.js' % (featureName, targetName))
+    else:
+      testPath = os.path.join(rekitRoot, 'test/app/components/%s.test.js' % targetName)
+
+    if os.path.exists(testPath):
+      Window().open_file(testPath)
+    else:
+      if sublime.ok_cancel_dialog('The unit test file doesn\'t exist, create it? '):
+        print('abc')
+        # run_script(get_path(paths), 'rm_async_action', name.split(' '))
+
+
+  def on_done(self, paths, relative_to_project, name):
+    if sublime.ok_cancel_dialog('Remove Async Action: %s?' % name, 'Remove'):
+      run_script(get_path(paths), 'rm_async_action', name.split(' '))
+
+  def is_visible(self, paths = []):
+    p = get_path(paths)
+    return is_actions(p) or is_page(p) or is_component(p) or is_reducer(p)

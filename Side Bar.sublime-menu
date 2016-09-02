@@ -40,6 +40,14 @@
     }
   },
   {
+    "id": "rekit_add_unit_test",
+    "caption": "Rekit: Unit Test",
+    "command": "unit_test",
+    "args": {
+      "paths": []
+    }
+  },
+  {
     "id": "rekit_remove_feature",
     "caption": "Rekit: Remove Feature",
     "command": "remove_feature",
