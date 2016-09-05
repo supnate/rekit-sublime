@@ -2,7 +2,7 @@
   {
     "id": "rekit_add_feature",
     "caption": "Rekit: Add Feature",
-    "command": "add_feature",
+    "command": "rekit_add_feature",
     "args": {
       "paths": []
     }
@@ -10,7 +10,7 @@
   {
     "id": "rekit_add_page",
     "caption": "Rekit: Add Page",
-    "command": "add_page",
+    "command": "rekit_add_page",
     "args": {
       "paths": []
     }
@@ -18,7 +18,7 @@
   {
     "id": "rekit_add_component",
     "caption": "Rekit: Add Component",
-    "command": "add_component",
+    "command": "rekit_add_component",
     "args": {
       "paths": []
     }
@@ -26,7 +26,7 @@
   {
     "id": "rekit_add_action",
     "caption": "Rekit: Add Action",
-    "command": "add_action",
+    "command": "rekit_add_action",
     "args": {
       "paths": []
     }
@@ -34,7 +34,7 @@
   {
     "id": "rekit_add_async_action",
     "caption": "Rekit: Add Async Action",
-    "command": "add_async_action",
+    "command": "rekit_add_async_action",
     "args": {
       "paths": []
     }
@@ -42,7 +42,7 @@
   {
     "id": "rekit_add_unit_test",
     "caption": "Rekit: Unit Test",
-    "command": "unit_test",
+    "command": "rekit_unit_test",
     "args": {
       "paths": []
     }
@@ -50,7 +50,7 @@
   {
     "id": "rekit_remove_feature",
     "caption": "Rekit: Remove Feature",
-    "command": "remove_feature",
+    "command": "rekit_remove_feature",
     "args": {
       "paths": []
     }
@@ -58,7 +58,7 @@
   {
     "id": "rekit_remove_component",
     "caption": "Rekit: Remove Component",
-    "command": "remove_component",
+    "command": "rekit_remove_component",
     "args": {
       "paths": []
     }
@@ -66,7 +66,7 @@
   {
     "id": "rekit_remove_page",
     "caption": "Rekit: Remove Page",
-    "command": "remove_page",
+    "command": "rekit_remove_page",
     "args": {
       "paths": []
     }
@@ -74,7 +74,7 @@
   {
     "id": "rekit_remove_action",
     "caption": "Rekit: Remove Action",
-    "command": "remove_action",
+    "command": "rekit_remove_action",
     "args": {
       "paths": []
     }
@@ -82,7 +82,55 @@
   {
     "id": "rekit_remove_async_action",
     "caption": "Rekit: Remove Async Action",
-    "command": "remove_async_action",
+    "command": "rekit_remove_async_action",
+    "args": {
+      "paths": []
+    }
+  },
+  {
+    "id": "rekit_run_test",
+    "caption": "Rekit: Run Test",
+    "command": "rekit_run_test",
+    "args": {
+      "paths": []
+    }
+  },
+  {
+    "id": "rekit_run_cli_test",
+    "caption": "Rekit: Run Test",
+    "command": "rekit_run_cli_test",
+    "args": {
+      "paths": []
+    }
+  },
+  {
+    "id": "rekit_run_tests",
+    "caption": "Rekit: Run Tests",
+    "command": "rekit_run_tests",
+    "args": {
+      "paths": []
+    }
+  },
+  {
+    "id": "rekit_run_cli_tests",
+    "caption": "Rekit: Run Tests",
+    "command": "rekit_run_cli_tests",
+    "args": {
+      "paths": []
+    }
+  },
+  {
+    "id": "rekit_show_output",
+    "caption": "Rekit: Show Output",
+    "command": "rekit_show_output",
+    "args": {
+      "paths": []
+    }
+  },
+  {
+    "id": "rekit_clear_output",
+    "caption": "Rekit: Clear Output",
+    "command": "rekit_clear_output",
     "args": {
       "paths": []
     }

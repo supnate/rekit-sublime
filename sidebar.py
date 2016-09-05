@@ -17,7 +17,7 @@ def main_thread(callback, *args, **kwargs):
   sublime.set_timeout(functools.partial(callback, *args, **kwargs), 0)
 
 class CommandThread(threading.Thread):
-  def __init__(self, command, on_done, working_dir="", shell="", env={}):
+  def __init__(self, command, on_done, working_dir=None, shell="", env={}):
     threading.Thread.__init__(self)
     self.command = command
     self.on_done = on_done
@@ -34,27 +34,38 @@ class CommandThread(threading.Thread):
 
     try:
       #si.wShowWindow = subprocess.SW_HIDE # default
-      p = subprocess.Popen(self.command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, startupinfo=si)
-      for line in p.stdout.readlines():
-        print(line)
+      p = subprocess.Popen(self.command, cwd=self.working_dir, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, bufsize=1, startupinfo=si)
+      for line in iter(p.stdout.readline, b''):
+        line2 = line.decode().strip('\r\n')
+        # only show output for mocha     
+        if self.command[1].find('mocha') >= 0:
+          show_rekit_output(line2)
 
     except subprocess.CalledProcessError as e:
+      # show_rekit_output(str(e))
+      show_rekit_output('running node failed:')
+      show_rekit_output(str(e))
       sublime.error_message(str(e))
 
     except OSError as e:
       if e.errno == 2:
         main_thread(sublime.error_message, "Node binary could not be found in PATH\nConsider using the node_command setting for the Rekit plugin\n\nPATH is: %s" % os.environ['PATH'])
       else:
+        show_rekit_output('running node failed:')
+        show_rekit_output(str(e))
         raise e
 
-def run_command(command, callback=None, show_status=True, filter_empty_args=True, **kwargs):
+    except Exception as e:
+      show_rekit_output('running node failed:')
+      show_rekit_output(str(e))
+
+def run_command(command, callback=None, show_status=True, filter_empty_args=True, cwd=None, **kwargs):
   if filter_empty_args:
     command = [arg for arg in command if arg]
-
   s = sublime.load_settings("Rekit.sublime-settings")
-
-  if command[0] == 'node' and s.get('node_command'):
-    command[0] = s.get('node_command')
+  node_cmd = s.get('node_command')
+  if command[0] == 'node' and node_cmd:
+    command[0] = node_cmd
 
   if command[0] == 'node' and s.get('node_path'):
     kwargs['env'] = { "NODE_PATH" : str(s.get('node_path')) }
@@ -62,7 +73,7 @@ def run_command(command, callback=None, show_status=True, filter_empty_args=True
   if command[0] == 'npm' and s.get('npm_command'):
     command[0] = s.get('npm_command')
 
-  thread = CommandThread(command, callback, **kwargs)
+  thread = CommandThread(command, callback, working_dir=cwd, **kwargs)
   thread.start()
 
 def run_script(path, name, args = []):
@@ -164,6 +175,30 @@ def is_reducer(path):
     and is_rekit_project(path) \
     and is_feature(os.path.dirname(path))
 
+def is_test(path):
+  if not is_rekit_project(path):
+    return False
+  return bool(re.search(r'\/test\/app\/.*\.test\.js$', path))
+
+def is_cli_test(path):
+  if not is_rekit_project(path):
+    return False
+  return bool(re.search(r'\/test\/cli\/.*\.test\.js$', path))
+
+def is_test_folder(path):
+  if not is_rekit_project(path):
+    return False
+  return bool(re.search(r'\/test\/?$', path)) and os.path.isdir(path)
+
+def is_app_test_folder(path):
+  if not is_rekit_project(path):
+    return False
+  return bool(re.search(r'\/test\/app', path)) and os.path.isdir(path)
+
+def is_cli_test_folder(path):
+  if not is_rekit_project(path):
+    return False
+  return bool(re.search(r'\/test\/cli', path)) and os.path.isdir(path)
 
 def is_other():
   return True
@@ -171,7 +206,7 @@ def is_other():
 def get_path(paths):
   return paths[0].replace('\\', '/')
 
-class AddFeatureCommand(sublime_plugin.WindowCommand):
+class RekitAddFeatureCommand(sublime_plugin.WindowCommand):
   def run(self, paths = []):
     Window().show_input_panel("Feature name:", '', functools.partial(self.on_done, paths, False), None, None)
 
@@ -183,7 +218,7 @@ class AddFeatureCommand(sublime_plugin.WindowCommand):
   def is_visible(self, paths = []):
     return is_features_folder(get_path(paths))
 
-class RemoveFeatureCommand(sublime_plugin.WindowCommand):
+class RekitRemoveFeatureCommand(sublime_plugin.WindowCommand):
   def run(self, paths = []):
     feature_name = get_feature_name(get_path(paths))
     if sublime.ok_cancel_dialog('Remove Feature: %s?' % feature_name, 'Remove'):
@@ -192,7 +227,7 @@ class RemoveFeatureCommand(sublime_plugin.WindowCommand):
   def is_visible(self, paths = []):
     return is_feature(get_path(paths))
 
-class AddComponentCommand(sublime_plugin.WindowCommand):
+class RekitAddComponentCommand(sublime_plugin.WindowCommand):
   def run(self, paths = []):
     Window().show_input_panel("Feature name/component name:", get_feature_name(get_path(paths)) + '/', functools.partial(self.on_done, paths, False), None, None)
 
@@ -202,7 +237,7 @@ class AddComponentCommand(sublime_plugin.WindowCommand):
   def is_visible(self, paths = []):
     return is_feature(get_path(paths))
 
-class RemoveComponentCommand(sublime_plugin.WindowCommand):
+class RekitRemoveComponentCommand(sublime_plugin.WindowCommand):
   def run(self, paths = []):
     feature_name = get_feature_name(get_path(paths))
     component_name = get_filename_without_ext(get_path(paths))
@@ -212,7 +247,7 @@ class RemoveComponentCommand(sublime_plugin.WindowCommand):
   def is_visible(self, paths = []):
     return is_component(get_path(paths))
 
-class AddPageCommand(sublime_plugin.WindowCommand):
+class RekitAddPageCommand(sublime_plugin.WindowCommand):
   def run(self, paths = []):
     Window().show_input_panel("Feature name/page name:", get_feature_name(get_path(paths)) + '/', functools.partial(self.on_done, paths, False), None, None)
 
@@ -222,7 +257,7 @@ class AddPageCommand(sublime_plugin.WindowCommand):
   def is_visible(self, paths = []):
     return is_feature(get_path(paths))
 
-class RemovePageCommand(sublime_plugin.WindowCommand):
+class RekitRemovePageCommand(sublime_plugin.WindowCommand):
   def run(self, paths = []):
     feature_name = get_feature_name(get_path(paths))
     page_name = get_filename_without_ext(get_path(paths))
@@ -232,7 +267,7 @@ class RemovePageCommand(sublime_plugin.WindowCommand):
   def is_visible(self, paths = []):
     return is_page(get_path(paths))
 
-class AddActionCommand(sublime_plugin.WindowCommand):
+class RekitAddActionCommand(sublime_plugin.WindowCommand):
   def run(self, paths = []):
     Window().show_input_panel("Feature name/action name:", get_feature_name(get_path(paths)) + '/', functools.partial(self.on_done, paths, False), None, None)
 
@@ -242,7 +277,7 @@ class AddActionCommand(sublime_plugin.WindowCommand):
   def is_visible(self, paths = []):
     return is_actions(get_path(paths))
 
-class RemoveActionCommand(sublime_plugin.WindowCommand):
+class RekitRemoveActionCommand(sublime_plugin.WindowCommand):
   def run(self, paths = []):
     Window().show_input_panel("Remove Action: Feature name/action name:", get_feature_name(get_path(paths)) + '/', functools.partial(self.on_done, paths, False), None, None)
 
@@ -253,7 +288,7 @@ class RemoveActionCommand(sublime_plugin.WindowCommand):
   def is_visible(self, paths = []):
     return is_actions(get_path(paths))
 
-class AddAsyncActionCommand(sublime_plugin.WindowCommand):
+class RekitAddAsyncActionCommand(sublime_plugin.WindowCommand):
   def run(self, paths = []):
     Window().show_input_panel("Feature name/async action name:", get_feature_name(get_path(paths)) + '/', functools.partial(self.on_done, paths, False), None, None)
 
@@ -263,7 +298,7 @@ class AddAsyncActionCommand(sublime_plugin.WindowCommand):
   def is_visible(self, paths = []):
     return is_actions(get_path(paths))
 
-class RemoveAsyncActionCommand(sublime_plugin.WindowCommand):
+class RekitRemoveAsyncActionCommand(sublime_plugin.WindowCommand):
   def run(self, paths = []):
     Window().show_input_panel("Remove Async Action: Feature name/async action name:", get_feature_name(get_path(paths)) + '/', functools.partial(self.on_done, paths, False), None, None)
 
@@ -274,7 +309,7 @@ class RemoveAsyncActionCommand(sublime_plugin.WindowCommand):
   def is_visible(self, paths = []):
     return is_actions(get_path(paths))
 
-class UnitTestCommand(sublime_plugin.WindowCommand):
+class RekitUnitTestCommand(sublime_plugin.WindowCommand):
   def run(self, paths = []):
     rekitRoot = get_rekit_root(paths[0])
     targetName = get_filename_without_ext(paths[0])
@@ -300,3 +335,119 @@ class UnitTestCommand(sublime_plugin.WindowCommand):
   def is_visible(self, paths = []):
     p = get_path(paths)
     return is_actions(p) or is_page(p) or is_component(p) or is_reducer(p)
+
+
+def get_test_output_panel():
+  panel = Window().find_output_panel('rekit_output_panel')
+  if panel is None:
+    panel = Window().create_output_panel('rekit_output_panel')
+    panel.set_read_only(True)
+  return panel
+
+class RekitOutputCommand(sublime_plugin.TextCommand):
+  def run(self, edit, **args):
+    self.view.set_read_only(False)
+    if args.get('clear'):
+      self.view.erase(edit, sublime.Region(0, self.view.size()))
+    else:
+      self.view.insert(edit, self.view.size(), args.get('text') + '\n')
+    self.view.set_read_only(True)
+
+def show_rekit_output(text):
+  panel = get_test_output_panel()
+  Window().run_command('show_panel', { 'panel': 'output.rekit_output_panel' })
+  panel.run_command('rekit_output', {'text': text})
+
+def clear_rekit_output():
+  panel = get_test_output_panel()
+  Window().run_command('show_panel', { 'panel': 'output.rekit_output_panel' })
+  panel.run_command('rekit_output', { 'clear': True })
+
+class RekitRunTestCommand(sublime_plugin.WindowCommand):
+  def run(self, paths = []):
+    p = get_path(paths)
+    rekitRoot = get_rekit_root(paths[0])
+    mochaWebpackPath = os.path.join(rekitRoot, 'node_modules/.bin/mocha-webpack')
+    beforeAllPath = os.path.join(rekitRoot, 'test/app/before-all.js')
+    webpackConfigPath = os.path.join(rekitRoot, 'webpack.test.config.js')
+    clear_rekit_output()
+    show_rekit_output('Running test: ' + os.path.basename(p) + '...')
+    run_command([
+      'node',
+      mochaWebpackPath,
+      "--include",
+      beforeAllPath,
+      "--webpack-config",
+      webpackConfigPath,
+      p
+    ], cwd=rekitRoot)
+
+  def is_visible(self, paths = []):
+    p = get_path(paths)
+    return is_test(p)
+
+class RekitRunTestsCommand(sublime_plugin.WindowCommand):
+  def run(self, paths = []):
+    p = get_path(paths)
+    rekitRoot = get_rekit_root(paths[0])
+    mochaWebpackPath = os.path.join(rekitRoot, 'node_modules/.bin/mocha-webpack')
+    beforeAllPath = os.path.join(rekitRoot, 'test/app/before-all.js')
+    webpackConfigPath = os.path.join(rekitRoot, 'webpack.test.config.js')
+    clear_rekit_output()
+    show_rekit_output('Running test: ' + p + '...')
+    run_command([
+      'node',
+      mochaWebpackPath,
+      "--include",
+      beforeAllPath,
+      "--webpack-config",
+      webpackConfigPath,
+      p + '/**/*.test.js'
+    ], cwd=rekitRoot)
+
+  def is_visible(self, paths = []):
+    p = get_path(paths)
+    return is_app_test_folder(p)
+
+class RekitRunCliTestCommand(sublime_plugin.WindowCommand):
+  def run(self, paths = []):
+    p = get_path(paths)
+    rekitRoot = get_rekit_root(paths[0])
+    mochaPath = os.path.join(rekitRoot, 'node_modules/.bin/mocha')
+    clear_rekit_output()
+    show_rekit_output('Running test: ' + os.path.basename(p) + '...')
+    run_command(['node', mochaPath, p])
+
+  def is_visible(self, paths = []):
+    p = get_path(paths)
+    return is_cli_test(p)
+
+class RekitRunCliTestsCommand(sublime_plugin.WindowCommand):
+  def run(self, paths = []):
+    p = get_path(paths)
+    rekitRoot = get_rekit_root(paths[0])
+    mochaPath = os.path.join(rekitRoot, 'node_modules/.bin/mocha')
+    clear_rekit_output()
+    show_rekit_output('Running test: ' + p + '...')
+    run_command(['node', mochaPath, p + '/**/*.test.js'])
+  def is_visible(self, paths = []):
+    p = get_path(paths)
+    return is_cli_test_folder(p)
+
+class RekitShowOutputCommand(sublime_plugin.WindowCommand):
+  def run(self, paths = []):
+    panel = get_test_output_panel()
+    Window().run_command('show_panel', { 'panel': 'output.rekit_output_panel' })
+
+  def is_visible(self, paths = []):
+    p = get_path(paths)
+    return is_rekit_root(p)
+
+class RekitClearOutputCommand(sublime_plugin.WindowCommand):
+  def run(self, paths = []):
+    rekitRoot = get_rekit_root(paths[0])
+    clear_rekit_output()
+
+  def is_visible(self, paths = []):
+    p = get_path(paths)
+    return is_rekit_root(p)
