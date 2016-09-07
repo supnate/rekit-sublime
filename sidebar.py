@@ -79,14 +79,14 @@ def run_command(command, callback=None, show_status=True, filter_empty_args=True
   thread.start()
 
 def run_script(path, name, args = [], on_done=None):
-  js_file = os.path.join(get_rekit_root(path), 'tools', name + '.js').replace('\\', '/').replace('\\', '/')
+  js_file = os.path.join(get_rekit_root(path), 'tools/cli', name + '.js').replace('\\', '/').replace('\\', '/')
   run_command(['node', js_file] + args, callback=on_done)
 
 def is_rekit_root(path):
   if path is None:
     return False
   return os.path.exists(os.path.join(path, 'src/features').replace('\\', '/')) \
-    and os.path.exists(os.path.join(path, 'tools/templates/Page.js').replace('\\', '/'))
+    and os.path.exists(os.path.join(path, 'tools/cli/templates/Page.js').replace('\\', '/'))
 
 def get_rekit_root(path):
   lastPath = None
@@ -115,6 +115,9 @@ def is_features_folder(path):
 
 def is_feature_element(path):
   return is_rekit_project(path) and re.search(r'src/features/\w+', path) is not None;
+
+def is_components_folder(path):
+  return is_rekit_project(path) and re.search(r'src/components/?$', path, re.I) is not None
 
 def is_page(path):
   return False
@@ -173,15 +176,13 @@ def is_page(path):
 
   return True
 
-# def is_actions(path):
-#   return os.path.basename(path) == 'actions.js' \
-#     and is_rekit_project(path) \
-#     and is_feature(os.path.dirname(path))
+def is_redux_folder(path):
+  return is_rekit_project(path) and re.search(r'src/features/[^/]+/redux/?$', path, re.I) is not None
 
 def is_reducer(path):
   return os.path.basename(path) == 'reducer.js' \
     and is_rekit_project(path) \
-    and is_feature(os.path.dirname(path))
+    and is_redux_folder(os.path.dirname(path))
 
 def is_action(path):
   if re.search(r'src\/features\/[^\/]+\/redux', path) is None:
@@ -198,6 +199,13 @@ def is_action(path):
   return True
 
 def is_async_action(path):
+  if re.search(r'src\/features\/[^\/]+\/redux', path) is None:
+    return False
+
+  actionsPath = os.path.join(os.path.dirname(path), 'actions.js')
+  if not os.path.exists(actionsPath):
+    return False
+
   actionName = get_filename_without_ext(path)
   text = open(path, 'r').read()
   # TODO: check constants to make it more precise
@@ -256,13 +264,19 @@ class RekitRemoveFeatureCommand(sublime_plugin.WindowCommand):
 
 class RekitAddComponentCommand(sublime_plugin.WindowCommand):
   def run(self, paths = []):
-    Window().show_input_panel("Feature name/component name:", get_feature_name(get_path(paths)) + '/', functools.partial(self.on_done, paths, False), None, None)
+    Window().show_input_panel("Component name:", '', functools.partial(self.on_done, paths, False), None, None)
 
   def on_done(self, paths, relative_to_project, name):
-    run_script(get_path(paths), 'add_component', name.split(' '))
+    args = [name]
+    p = get_path(paths)
+    if is_feature(p):
+      featureName = get_feature_name(p)
+      args = [featureName + '/' + name]
+    run_script(p, 'add_component', args)
 
   def is_visible(self, paths = []):
-    return is_feature(get_path(paths))
+    p = get_path(paths)
+    return is_feature(p) or is_components_folder(p)
 
 class RekitRemoveComponentCommand(sublime_plugin.WindowCommand):
   def run(self, paths = []):
@@ -282,10 +296,12 @@ class RekitRemoveComponentCommand(sublime_plugin.WindowCommand):
 
 class RekitAddPageCommand(sublime_plugin.WindowCommand):
   def run(self, paths = []):
-    Window().show_input_panel("Feature name/page name:", get_feature_name(get_path(paths)) + '/', functools.partial(self.on_done, paths, False), None, None)
+    Window().show_input_panel("Page name:", '', functools.partial(self.on_done, paths, False), None, None)
 
   def on_done(self, paths, relative_to_project, name):
-    run_script(get_path(paths), 'add_page', name.split(' '))
+    p = get_path(paths)
+    featureName = get_feature_name(p)
+    run_script(get_path(paths), 'add_page', (featureName + '/' + name).split(' '))
 
   def is_visible(self, paths = []):
     return is_feature(get_path(paths))
@@ -302,45 +318,56 @@ class RekitRemovePageCommand(sublime_plugin.WindowCommand):
 
 class RekitAddActionCommand(sublime_plugin.WindowCommand):
   def run(self, paths = []):
-    Window().show_input_panel("Feature name/action name:", get_feature_name(get_path(paths)) + '/', functools.partial(self.on_done, paths, False), None, None)
+    Window().show_input_panel("Action name:", '', functools.partial(self.on_done, paths, False), None, None)
 
   def on_done(self, paths, relative_to_project, name):
-    run_script(get_path(paths), 'add_action', name.split(' '))
+    p = get_path(paths)
+    featureName = get_feature_name(p)
+    run_script(get_path(paths), 'add_action', (featureName + '/' + name).split(' '))
 
   def is_visible(self, paths = []):
-    return is_actions(get_path(paths))
+    return is_redux_folder(get_path(paths))
 
 class RekitRemoveActionCommand(sublime_plugin.WindowCommand):
   def run(self, paths = []):
-    Window().show_input_panel("Remove Action: Feature name/action name:", get_feature_name(get_path(paths)) + '/', functools.partial(self.on_done, paths, False), None, None)
+    p = get_path(paths)
+    featureName = get_feature_name(p)
+    actionName = get_filename_without_ext(p)
+    if sublime.ok_cancel_dialog('Remove Action: %s/%s?' % (featureName, actionName), 'Remove'):
+      Window().run_command('close')
+      run_script(p, 'rm_action', ['%s/%s' % (featureName, actionName)])
 
   def on_done(self, paths, relative_to_project, name):
     if sublime.ok_cancel_dialog('Remove Action: %s?' % name, 'Remove'):
       run_script(get_path(paths), 'rm_action', name.split(' '))
 
   def is_visible(self, paths = []):
-    return is_actions(get_path(paths))
+    p = get_path(paths);
+    return is_action(p) and not is_async_action(p)
 
 class RekitAddAsyncActionCommand(sublime_plugin.WindowCommand):
   def run(self, paths = []):
-    Window().show_input_panel("Feature name/async action name:", get_feature_name(get_path(paths)) + '/', functools.partial(self.on_done, paths, False), None, None)
+    Window().show_input_panel("Async action name:", '', functools.partial(self.on_done, paths, False), None, None)
 
   def on_done(self, paths, relative_to_project, name):
-    run_script(get_path(paths), 'add_async_action', name.split(' '))
+    p = get_path(paths)
+    featureName = get_feature_name(p)
+    run_script(get_path(paths), 'add_async_action', (featureName + '/' + name).split(' '))
 
   def is_visible(self, paths = []):
-    return is_actions(get_path(paths))
+    return is_redux_folder(get_path(paths))
 
 class RekitRemoveAsyncActionCommand(sublime_plugin.WindowCommand):
   def run(self, paths = []):
-    Window().show_input_panel("Remove Async Action: Feature name/async action name:", get_feature_name(get_path(paths)) + '/', functools.partial(self.on_done, paths, False), None, None)
-
-  def on_done(self, paths, relative_to_project, name):
-    if sublime.ok_cancel_dialog('Remove Async Action: %s?' % name, 'Remove'):
-      run_script(get_path(paths), 'rm_async_action', name.split(' '))
+    p = get_path(paths)
+    featureName = get_feature_name(p)
+    actionName = get_filename_without_ext(p)
+    if sublime.ok_cancel_dialog('Remove Async Action: %s/%s?' % (featureName, actionName), 'Remove'):
+      Window().run_command('close')
+      run_script(p, 'rm_async_action', ['%s/%s' % (featureName, actionName)])
 
   def is_visible(self, paths = []):
-    return is_actions(get_path(paths))
+    return is_async_action(get_path(paths))
 
 class RekitUnitTestCommand(sublime_plugin.WindowCommand):
   def run(self, paths = []):
@@ -348,11 +375,20 @@ class RekitUnitTestCommand(sublime_plugin.WindowCommand):
     rekitRoot = get_rekit_root(p)
     targetName = get_filename_without_ext(p)
     featureName = None
+    if is_reducer(p):
+      featureName = get_feature_name(p)
+      testPath = os.path.join(rekitRoot, 'test/app/features/%s/redux/reducer.test.js' % featureName)
+      if not os.path.exists(testPath):
+        if sublime.ok_cancel_dialog('The test file doesn\'t exist, create it? '):
+          script = 'add_reducer_test'
+          run_script(p, script, [featureName], on_done=functools.partial(self.on_test_created, testPath))
+      else:
+        Window().open_file(testPath)
     if is_action(p):
       featureName = get_feature_name(p)
       testPath = os.path.join(rekitRoot, 'test/app/features/%s/redux/%s.test.js' % (featureName, targetName))
       if not os.path.exists(testPath):
-        if sublime.ok_cancel_dialog('The unit test file doesn\'t exist, create it? '):
+        if sublime.ok_cancel_dialog('The test file doesn\'t exist, create it? '):
           script = 'add_action_test'
           if is_async_action(p):
             script = 'add_async_action_test';
@@ -365,7 +401,7 @@ class RekitUnitTestCommand(sublime_plugin.WindowCommand):
       featureName = get_feature_name(p)
       testPath = os.path.join(rekitRoot, 'test/app/features/%s/%s.test.js' % (featureName, targetName))
       if not os.path.exists(testPath):
-        if sublime.ok_cancel_dialog('The unit test file doesn\'t exist, create it? '):
+        if sublime.ok_cancel_dialog('The test file doesn\'t exist, create it? '):
           script = 'add_page_test'
           run_script(p, script, [featureName + '/' + targetName], on_done=functools.partial(self.on_test_created, testPath))
       else:
@@ -375,7 +411,7 @@ class RekitUnitTestCommand(sublime_plugin.WindowCommand):
       featureName = get_feature_name(p)
       testPath = os.path.join(rekitRoot, 'test/app/features/%s/%s.test.js' % (featureName, targetName))
       if not os.path.exists(testPath):
-        if sublime.ok_cancel_dialog('The unit test file doesn\'t exist, create it? '):
+        if sublime.ok_cancel_dialog('The test file doesn\'t exist, create it? '):
           script = 'add_component_test'
           run_script(p, script, [featureName + '/' + targetName], on_done=functools.partial(self.on_test_created, testPath))
       else:
@@ -383,7 +419,7 @@ class RekitUnitTestCommand(sublime_plugin.WindowCommand):
     elif is_component(p):
       testPath = os.path.join(rekitRoot, 'test/app/components/%s.test.js' % targetName)
       if not os.path.exists(testPath):
-        if sublime.ok_cancel_dialog('The unit test file doesn\'t exist, create it? '):
+        if sublime.ok_cancel_dialog('The test file doesn\'t exist, create it? '):
           script = 'add_component_test'
           run_script(p, script, [targetName], on_done=functools.partial(self.on_test_created, testPath))
       else:
