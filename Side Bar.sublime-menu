@@ -96,14 +96,6 @@
     }
   },
   {
-    "id": "rekit_run_cli_test",
-    "caption": "Rekit: Run Test",
-    "command": "rekit_run_cli_test",
-    "args": {
-      "paths": []
-    }
-  },
-  {
     "id": "rekit_run_tests",
     "caption": "Rekit: Run Tests",
     "command": "rekit_run_tests",
@@ -112,9 +104,9 @@
     }
   },
   {
-    "id": "rekit_run_cli_tests",
+    "id": "rekit_run_all_tests",
     "caption": "Rekit: Run Tests",
-    "command": "rekit_run_cli_tests",
+    "command": "rekit_run_all_tests",
     "args": {
       "paths": []
     }

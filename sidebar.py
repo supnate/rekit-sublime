@@ -38,7 +38,7 @@ class CommandThread(threading.Thread):
       for line in iter(p.stdout.readline, b''):
         line2 = line.decode().strip('\r\n')
         # only show output for mocha     
-        if self.command[1].find('mocha') >= 0:
+        if self.command[1].find('run_test.js') >= 0:
           show_rekit_output(line2)
       if self.on_done:
         self.on_done()
@@ -215,27 +215,17 @@ def is_async_action(path):
 def is_test(path):
   if not is_rekit_project(path):
     return False
-  return bool(re.search(r'\/test\/app\/.*\.test\.js$', path))
-
-def is_cli_test(path):
-  if not is_rekit_project(path):
-    return False
-  return bool(re.search(r'\/test\/cli\/.*\.test\.js$', path))
+  return bool(re.search(r'\/test\/.*\.test\.js$', path))
 
 def is_test_folder(path):
   if not is_rekit_project(path):
     return False
   return bool(re.search(r'\/test\/?$', path)) and os.path.isdir(path)
 
-def is_app_test_folder(path):
+def is_sub_test_folder(path):
   if not is_rekit_project(path):
     return False
-  return bool(re.search(r'\/test\/app', path)) and os.path.isdir(path)
-
-def is_cli_test_folder(path):
-  if not is_rekit_project(path):
-    return False
-  return bool(re.search(r'\/test\/cli', path)) and os.path.isdir(path)
+  return bool(re.search(r'\/test\/\w+', path)) and os.path.isdir(path)
 
 def is_other():
   return True
@@ -454,6 +444,10 @@ def show_rekit_output(text):
   Window().run_command('show_panel', { 'panel': 'output.rekit_output_panel' })
   panel.run_command('rekit_output', {'text': text})
 
+def show_rekit_output_panel():
+  panel = get_test_output_panel()
+  Window().run_command('show_panel', { 'panel': 'output.rekit_output_panel' })
+
 def clear_rekit_output():
   panel = get_test_output_panel()
   Window().run_command('show_panel', { 'panel': 'output.rekit_output_panel' })
@@ -463,19 +457,12 @@ class RekitRunTestCommand(sublime_plugin.WindowCommand):
   def run(self, paths = []):
     p = get_path(paths)
     rekitRoot = get_rekit_root(paths[0])
-    mochaWebpackPath = os.path.join(rekitRoot, 'node_modules/.bin/mocha-webpack')
-    beforeAllPath = os.path.join(rekitRoot, 'test/app/before-all.js')
-    webpackConfigPath = os.path.join(rekitRoot, 'webpack.test.config.js')
     clear_rekit_output()
-    show_rekit_output('Running test: ' + os.path.basename(p) + '...')
+    show_rekit_output_panel()
     run_command([
       'node',
-      mochaWebpackPath,
-      "--include",
-      beforeAllPath,
-      "--webpack-config",
-      webpackConfigPath,
-      p
+      './tools/run_test.js',
+      p.replace(os.path.join(rekitRoot, 'test/'), '')
     ], cwd=rekitRoot)
 
   def is_visible(self, paths = []):
@@ -486,54 +473,59 @@ class RekitRunTestsCommand(sublime_plugin.WindowCommand):
   def run(self, paths = []):
     p = get_path(paths)
     rekitRoot = get_rekit_root(paths[0])
-    mochaWebpackPath = os.path.join(rekitRoot, 'node_modules/.bin/mocha-webpack')
-    beforeAllPath = os.path.join(rekitRoot, 'test/app/before-all.js')
-    webpackConfigPath = os.path.join(rekitRoot, 'webpack.test.config.js')
     clear_rekit_output()
-    show_rekit_output('Running test: ' + p + '...')
+    show_rekit_output_panel()
     run_command([
       'node',
-      mochaWebpackPath,
-      "--include",
-      beforeAllPath,
-      "--webpack-config",
-      webpackConfigPath,
-      p + '/**/*.test.js'
+      './tools/run_test.js',
+      p.replace(os.path.join(rekitRoot, 'test/'), '')
     ], cwd=rekitRoot)
 
   def is_visible(self, paths = []):
     p = get_path(paths)
-    return is_app_test_folder(p)
-
-class RekitRunCliTestCommand(sublime_plugin.WindowCommand):
+    return is_sub_test_folder(p)
+class RekitRunAllTestsCommand(sublime_plugin.WindowCommand):
   def run(self, paths = []):
-    p = get_path(paths)
     rekitRoot = get_rekit_root(paths[0])
-    mochaPath = os.path.join(rekitRoot, 'node_modules/.bin/mocha')
     clear_rekit_output()
-    show_rekit_output('Running test: ' + os.path.basename(p) + '...')
-    run_command(['node', mochaPath, p])
+    show_rekit_output_panel()
+    run_command([
+      'node',
+      './tools/run_test.js'
+    ], cwd=rekitRoot)
 
   def is_visible(self, paths = []):
     p = get_path(paths)
-    return is_cli_test(p)
+    return is_test_folder(p)
 
-class RekitRunCliTestsCommand(sublime_plugin.WindowCommand):
-  def run(self, paths = []):
-    p = get_path(paths)
-    rekitRoot = get_rekit_root(paths[0])
-    mochaPath = os.path.join(rekitRoot, 'node_modules/.bin/mocha')
-    clear_rekit_output()
-    show_rekit_output('Running test: ' + p + '...')
-    run_command(['node', mochaPath, p + '/**/*.test.js'])
-  def is_visible(self, paths = []):
-    p = get_path(paths)
-    return is_cli_test_folder(p)
+# class RekitRunCliTestCommand(sublime_plugin.WindowCommand):
+#   def run(self, paths = []):
+#     p = get_path(paths)
+#     rekitRoot = get_rekit_root(paths[0])
+#     mochaPath = os.path.join(rekitRoot, 'node_modules/.bin/mocha')
+#     clear_rekit_output()
+#     show_rekit_output('Running test: ' + os.path.basename(p) + '...')
+#     run_command(['node', mochaPath, p])
+
+#   def is_visible(self, paths = []):
+#     p = get_path(paths)
+#     return is_cli_test(p)
+
+# class RekitRunCliTestsCommand(sublime_plugin.WindowCommand):
+#   def run(self, paths = []):
+#     p = get_path(paths)
+#     rekitRoot = get_rekit_root(paths[0])
+#     mochaPath = os.path.join(rekitRoot, 'node_modules/.bin/mocha')
+#     clear_rekit_output()
+#     show_rekit_output('Running test: ' + p + '...')
+#     run_command(['node', mochaPath, p + '/**/*.test.js'])
+#   def is_visible(self, paths = []):
+#     p = get_path(paths)
+#     return is_cli_test_folder(p)
 
 class RekitShowOutputCommand(sublime_plugin.WindowCommand):
   def run(self, paths = []):
-    panel = get_test_output_panel()
-    Window().run_command('show_panel', { 'panel': 'output.rekit_output_panel' })
+    show_rekit_output_panel()
 
   def is_visible(self, paths = []):
     p = get_path(paths)
