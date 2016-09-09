@@ -7,6 +7,7 @@ import functools
 import re
 import subprocess
 import threading
+import webbrowser
 
 def Window():
   return sublime.active_window()
@@ -38,7 +39,7 @@ class CommandThread(threading.Thread):
       for line in iter(p.stdout.readline, b''):
         line2 = line.decode().strip('\r\n')
         # only show output for mocha     
-        if self.command[1].find('run_test.js') >= 0:
+        if re.search(r'run_test\.js|build\.js', self.command[1]) is not None:
           show_rekit_output(line2)
       if self.on_done:
         self.on_done()
@@ -221,6 +222,16 @@ def is_test_folder(path):
   if not is_rekit_project(path):
     return False
   return bool(re.search(r'\/test\/?$', path)) and os.path.isdir(path)
+
+def is_app_test_folder(path):
+  if not is_rekit_project(path):
+    return False
+  return bool(re.search(r'\/test/app\/?$', path)) and os.path.isdir(path)
+
+def is_cli_test_folder(path):
+  if not is_rekit_project(path):
+    return False
+  return bool(re.search(r'\/test/cli\/?$', path)) and os.path.isdir(path)
 
 def is_sub_test_folder(path):
   if not is_rekit_project(path):
@@ -498,30 +509,46 @@ class RekitRunAllTestsCommand(sublime_plugin.WindowCommand):
     p = get_path(paths)
     return is_test_folder(p)
 
-# class RekitRunCliTestCommand(sublime_plugin.WindowCommand):
-#   def run(self, paths = []):
-#     p = get_path(paths)
-#     rekitRoot = get_rekit_root(paths[0])
-#     mochaPath = os.path.join(rekitRoot, 'node_modules/.bin/mocha')
-#     clear_rekit_output()
-#     show_rekit_output('Running test: ' + os.path.basename(p) + '...')
-#     run_command(['node', mochaPath, p])
+class RekitTestCoverageCommand(sublime_plugin.WindowCommand):
+  def run(self, paths = []):
+    p = get_path(paths)
+    rekitRoot = get_rekit_root(p)
+    reportType = ''
+    if is_app_test_folder(p):
+      reportType = 'app'
+    elif is_cli_test_folder(p):
+      reportType = 'cli'
+    reportPath = os.path.join(rekitRoot, 'coverage', reportType, 'lcov-report/index.html')
+    webbrowser.open('file://' + reportPath)
 
-#   def is_visible(self, paths = []):
-#     p = get_path(paths)
-#     return is_cli_test(p)
+  def is_enabled(self, paths = []):
+    if not self.is_visible(paths):
+      return False
+    p = get_path(paths)
+    rekitRoot = get_rekit_root(p)
+    reportType = ''
+    if is_app_test_folder(p):
+      reportType = 'app'
+    elif is_cli_test_folder(p):
+      reportType = 'cli'
+    reportPath = os.path.join(rekitRoot, 'coverage', reportType, 'lcov-report/index.html')
+    return os.path.exists(reportPath)
 
-# class RekitRunCliTestsCommand(sublime_plugin.WindowCommand):
-#   def run(self, paths = []):
-#     p = get_path(paths)
-#     rekitRoot = get_rekit_root(paths[0])
-#     mochaPath = os.path.join(rekitRoot, 'node_modules/.bin/mocha')
-#     clear_rekit_output()
-#     show_rekit_output('Running test: ' + p + '...')
-#     run_command(['node', mochaPath, p + '/**/*.test.js'])
-#   def is_visible(self, paths = []):
-#     p = get_path(paths)
-#     return is_cli_test_folder(p)
+  def is_visible(self, paths = []):
+    p = get_path(paths)
+    return is_test_folder(p) or is_app_test_folder(p) or is_cli_test_folder(p)
+
+class RekitBuildCommand(sublime_plugin.WindowCommand):
+  def run(self, paths = []):
+    p = get_path(paths)
+    rekitRoot = get_rekit_root(paths[0])
+    clear_rekit_output()
+    show_rekit_output_panel()
+    run_command(['node', './tools/build.js'], cwd=rekitRoot)
+
+  def is_visible(self, paths = []):
+    p = get_path(paths)
+    return is_rekit_root(p)
 
 class RekitShowOutputCommand(sublime_plugin.WindowCommand):
   def run(self, paths = []):

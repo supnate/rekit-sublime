@@ -112,6 +112,22 @@
     }
   },
   {
+    "id": "rekit_test_coverage",
+    "caption": "Rekit: Test Coverage",
+    "command": "rekit_test_coverage",
+    "args": {
+      "paths": []
+    }
+  },
+  {
+    "id": "rekit_build",
+    "caption": "Rekit: Build",
+    "command": "rekit_build",
+    "args": {
+      "paths": []
+    }
+  },
+  {
     "id": "rekit_show_output",
     "caption": "Rekit: Show Output",
     "command": "rekit_show_output",
