@@ -9,6 +9,10 @@ import subprocess
 import threading
 import webbrowser
 
+LOCAL_PATH = ''
+if not os.name == 'nt':
+  LOCAL_PATH = ':/usr/local/bin:/usr/local/sbin:/usr/local/share/npm/bin:/usr/local/share/node/bin'
+
 def Window():
   return sublime.active_window()
 
@@ -35,7 +39,13 @@ class CommandThread(threading.Thread):
 
     try:
       #si.wShowWindow = subprocess.SW_HIDE # default
-      p = subprocess.Popen(self.command, cwd=self.working_dir, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, bufsize=1, startupinfo=si)
+      envPATH = os.environ['PATH'] + LOCAL_PATH
+      s = sublime.load_settings("Rekit.sublime-settings")
+      if s.get('node_dir') and envPATH.find(s.get('node_dir')) == -1:
+        envPATH = envPATH + os.pathsep + s.get('node_dir')
+      if s.get('npm_dir') and envPATH.find(s.get('npm_dir')) == -1:
+        envPATH = envPATH + os.pathsep + s.get('npm_dir')
+      p = subprocess.Popen(self.command, cwd=self.working_dir, env={'PATH': envPATH}, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, bufsize=1, startupinfo=si)
       for line in iter(p.stdout.readline, b''):
         line2 = line.decode().strip('\r\n')
         # only show output for mocha     
@@ -52,7 +62,7 @@ class CommandThread(threading.Thread):
 
     except OSError as e:
       if e.errno == 2:
-        main_thread(sublime.error_message, "Node binary could not be found in PATH\nConsider using the node_command setting for the Rekit plugin\n\nPATH is: %s" % os.environ['PATH'])
+        main_thread(sublime.error_message, "Node binary could not be found in PATH\nConsider using the node_dir and npm_dir settings for the Rekit plugin\n\nPATH is: %s" % os.environ['PATH'])
       else:
         show_rekit_output('running node failed:')
         show_rekit_output(str(e))
@@ -65,16 +75,14 @@ class CommandThread(threading.Thread):
 def run_command(command, callback=None, show_status=True, filter_empty_args=True, cwd=None, **kwargs):
   if filter_empty_args:
     command = [arg for arg in command if arg]
-  s = sublime.load_settings("Rekit.sublime-settings")
-  node_cmd = s.get('node_command')
-  if command[0] == 'node' and node_cmd:
-    command[0] = node_cmd
+  
+  # node_cmd = s.get('node_command')
+  # npm_cmd =s.get('npm_command')
+  # if command[0] == 'node' and node_cmd:
+  #   command[0] = node_cmd
 
-  if command[0] == 'node' and s.get('node_path'):
-    kwargs['env'] = { "NODE_PATH" : str(s.get('node_path')) }
-
-  if command[0] == 'npm' and s.get('npm_command'):
-    command[0] = s.get('npm_command')
+  # if command[0] == 'npm' and npm_cmd:
+  #   command[0] = npm_cmd
 
   thread = CommandThread(command, callback, working_dir=cwd, **kwargs)
   thread.start()
