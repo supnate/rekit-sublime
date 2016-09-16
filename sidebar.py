@@ -8,6 +8,7 @@ import re
 import subprocess
 import threading
 import webbrowser
+import codecs
 
 LOCAL_PATH = ''
 if not os.name == 'nt':
@@ -149,7 +150,7 @@ def is_component(path):
   if not os.path.exists(path):
     return False
 
-  text = open(path, 'r').read()
+  text = codecs.open(path, 'r', 'utf8').read()
   if re.search('class ' + get_filename_without_ext(filename) + ' extends', text, re.MULTILINE) is None:
     return False
 
@@ -176,7 +177,7 @@ def is_page(path):
   if not os.path.exists(path):
     return False
 
-  text = open(path, 'r').read()
+  text = codecs.open(path, 'r', 'utf8').read()
   if re.search('class ' + get_filename_without_ext(filename) + ' extends', text, re.MULTILINE) is None:
     return False
 
@@ -201,7 +202,7 @@ def is_action(path):
   if not os.path.exists(actionsPath):
     return False
 
-  text = open(actionsPath, 'r').read()
+  text = codecs.open(actionsPath, 'r', 'utf8').read()
   if text.find("'./" + get_filename_without_ext(path) + "';") == -1:
     return False
 
@@ -216,7 +217,7 @@ def is_async_action(path):
     return False
 
   actionName = get_filename_without_ext(path)
-  text = open(path, 'r').read()
+  text = codecs.open(path, 'r', 'utf8').read()
   # TODO: check constants to make it more precise
   return re.search('function ' + actionName + r'\(', text, re.I) is not None \
     and re.search('function dismiss' + actionName + r'Error\(', text, re.I) is not None
