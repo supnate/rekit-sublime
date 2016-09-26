@@ -511,7 +511,8 @@ class RekitRunAllTestsCommand(sublime_plugin.WindowCommand):
     show_rekit_output_panel()
     run_command([
       'node',
-      './tools/run_test.js'
+      './tools/run_test.js',
+      'all'
     ], cwd=rekitRoot)
 
   def is_visible(self, paths = []):
