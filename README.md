@@ -19,8 +19,8 @@ Here is a quick look for the plugin:
 ## Easy installation
 You can install this plugin through the Package Control.
 
-Press cmd/ctrl + shift + p to open the command palette.
-Type “install package” and press enter. Then search for “Rekit”
+Press <kbd>Cmd</kbd>/<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd> to open the command palette.
+Type “install package” and press <kbd>Enter</kbd>. Then search for “Rekit”
 
 ## Manual installation
 Download the [latest release](https://github.com/supnate/rekit-plugin), extract and rename the directory to “Rekit”.
