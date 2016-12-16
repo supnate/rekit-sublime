@@ -46,7 +46,16 @@ class CommandThread(threading.Thread):
         envPATH = envPATH + os.pathsep + s.get('node_dir')
       if s.get('npm_dir') and envPATH.find(s.get('npm_dir')) == -1:
         envPATH = envPATH + os.pathsep + s.get('npm_dir')
-      p = subprocess.Popen(self.command, cwd=self.working_dir, env={'PATH': envPATH}, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, bufsize=1, startupinfo=si)
+
+      # https://docs.python.org/2/library/subprocess.html
+      # Note If specified, env must provide any variables required for the program to execute. 
+      # On Windows, in order to run a side-by-side assembly the specified env **must** include a valid SystemRoot.
+      envObj = {
+        'PATH': envPATH,
+        'SYSTEMROOT': os.environ['SYSTEMROOT']
+      }
+      
+      p = subprocess.Popen(self.command, cwd=self.working_dir, env=envObj, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, bufsize=1, startupinfo=si)
       for line in iter(p.stdout.readline, b''):
         line2 = line.decode().strip('\r\n')
         # only show output for mocha     
