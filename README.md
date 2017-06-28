@@ -1,3 +1,5 @@
+*** NOTE: This repo is deprecated in favor of [Rekit Portal](https://github.com/supnate/rekit-portal) ***
+
 ## Sublime plugin
 
 Sublime text is a widely used code editor for JavaScript developers. [Rekit sublime plugin](https://github.com/supnate/rekit-plugin) is created for it to support common Rekit tasks.
