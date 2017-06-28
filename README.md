@@ -1,4 +1,4 @@
-*** NOTE: This repo is deprecated in favor of [Rekit Portal](https://github.com/supnate/rekit-portal) ***
+### NOTE: This repo is deprecated in favor of [Rekit Portal](https://github.com/supnate/rekit-portal)
 
 ## Sublime plugin
 
